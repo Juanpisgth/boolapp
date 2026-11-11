@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2f5bea">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BoolApp">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%232f5bea'/%3E%3Ctext x='50' y='66' font-family='sans-serif' font-size='48' font-weight='bold' fill='white' text-anchor='middle'%3EA+B%3C/text%3E%3C/svg%3E">
+<title>Calculadora Booleana AI</title>
+<style>
+:root{
+  --bg:#f2f4f8;--card:#ffffff;--tx:#1d2433;--tx2:#5c667a;--bd:#dce1eb;
+  --ac:#2f5bea;--ac2:#e8edff;--ok:#1a8a4a;--err:#c62828;
+  --nav-h:64px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0f1218;--card:#1a1f2b;--tx:#e7eaf3;--tx2:#9aa3b8;--bd:#2d3446;
+    --ac:#6c8eff;--ac2:#252d44;--ok:#34d399;--err:#f87171;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:system-ui,-apple-system,sans-serif;
+  background:var(--bg);color:var(--tx);
+  margin:0;padding:0;
+  padding-bottom:calc(var(--nav-h) + 20px + env(safe-area-inset-bottom));
+}
+header{
+  position:sticky;top:0;z-index:20;
+  background:var(--card);border-bottom:1px solid var(--bd);
+  padding:12px 16px;display:flex;align-items:center;justify-content:space-between;
+}
+header h1{font-size:1.15rem;margin:0;font-weight:700}
+.btn-icon{
+  background:var(--ac2);color:var(--tx);border:1px solid var(--bd);
+  border-radius:10px;padding:7px 11px;font-size:1.05rem;cursor:pointer;
+}
+main{max-width:680px;margin:0 auto;padding:14px}
+.tab-view{display:none}
+.tab-view.active{display:block;animation:fadeIn .18s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.card{
+  background:var(--card);border:1px solid var(--bd);
+  border-radius:16px;padding:16px;margin-bottom:14px;
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+}
+#expresion{
+  width:100%;font-size:1.35rem;padding:12px 14px;
+  border:1.5px solid var(--bd);border-radius:12px;
+  background:var(--bg);color:var(--tx);outline:none;
+}
+#expresion:focus{border-color:var(--ac)}
+
+.teclado{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:12px 0;
+}
+.teclado button{
+  font-size:1rem;font-weight:600;padding:12px 4px;
+  border:1px solid var(--bd);border-radius:10px;
+  background:var(--ac2);color:var(--tx);cursor:pointer;
+}
+.teclado button:active{transform:scale(.96)}
+.teclado button.span2{grid-column:span 2}
+.teclado button.op{background:var(--card);border-color:var(--ac);color:var(--ac)}
+.teclado button.danger{color:var(--err)}
+
+.btn-primary{
+  background:var(--ac);color:#fff;border:0;font-weight:700;
+  width:100%;padding:14px;border-radius:12px;font-size:1.05rem;cursor:pointer;
+}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed}
+
+/* Escáner IA */
+.scan-box{
+  border:2px dashed var(--bd);border-radius:14px;padding:24px 16px;
+  text-align:center;background:var(--bg);margin-bottom:12px;
+}
+.scan-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.btn-sec{
+  background:var(--ac2);color:var(--tx);border:1px solid var(--bd);
+  padding:12px;border-radius:12px;font-weight:600;font-size:.95rem;cursor:pointer;
+  text-align:center;
+}
+#previewImg{
+  max-width:100%;max-height:240px;border-radius:10px;
+  display:none;margin:10px auto 0;object-fit:contain;
+}
+.status-msg{font-size:.9rem;margin-top:10px;text-align:center;color:var(--tx2)}
+
+/* Pasos y Tabla */
+#resultado{font-size:1.45rem;font-weight:700;color:var(--ok);margin:8px 0}
+#pasos{list-style:none;padding:0;margin:0}
+#pasos li{
+  display:grid;grid-template-columns:1fr auto;gap:4px 12px;
+  align-items:baseline;padding:9px 0;border-bottom:1px solid var(--bd);
+}
+.mat{font-size:1.15rem;font-style:italic}
+.neg{border-top:1.5px solid currentColor;padding-top:1px;margin:0 1px}
+.ley{font-style:italic;font-size:.85rem;color:var(--ac);cursor:pointer;text-align:right}
+.exp{display:none;grid-column:1/-1;font-size:.85rem;color:var(--tx2)}
+.ver-exp .exp,#pasos li.abierta .exp{display:block}
+#btnLeyes{
+  font-size:.85rem;padding:7px 12px;margin-bottom:8px;
+  background:var(--ac2);color:var(--tx);border:1px solid var(--bd);border-radius:8px;cursor:pointer;
+}
+#tablaVerdad{overflow-x:auto}
+.tabla-verdad{border-collapse:collapse;width:100%;margin-top:6px;font-size:.92rem}
+.tabla-verdad th,.tabla-verdad td{border:1px solid var(--bd);padding:6px 8px;text-align:center}
+.tabla-verdad th{background:var(--ac2)}
+.ok{color:var(--ok);font-weight:600}.mal{color:var(--err);font-weight:600}
+
+/* Barra de navegación inferior tipo App */
+.bottom-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:30;
+  height:calc(var(--nav-h) + env(safe-area-inset-bottom));
+  padding-bottom:env(safe-area-inset-bottom);
+  background:var(--card);border-top:1px solid var(--bd);
+  display:flex;justify-content:space-around;align-items:center;
+}
+.nav-item{
+  flex:1;background:none;border:0;color:var(--tx2);
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-size:.75rem;font-weight:600;padding:8px 0;cursor:pointer;
+}
+.nav-item span.ico{font-size:1.3rem}
+.nav-item.active{color:var(--ac)}
+
+/* Modal de Configuración (API Key) */
+.modal-bg{
+  display:none;position:fixed;inset:0;z-index:50;
+  background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:16px;
+}
+.modal-bg.open{display:flex}
+.modal{
+  background:var(--card);border:1px solid var(--bd);border-radius:16px;
+  padding:20px;width:100%;max-width:420px;
+}
+.modal h2{margin-top:0;font-size:1.15rem}
+.modal input{
+  width:100%;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;
+  background:var(--bg);color:var(--tx);margin:10px 0 14px;font-size:.95rem;
+}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ BoolApp IA</h1>
+  <button type="button" class="btn-icon" id="btnConfig" title="Configurar API Key">⚙️</button>
+</header>
+
+<main>
+  <!-- PESTAÑA 1: CALCULADORA -->
+  <section id="tab-calc" class="tab-view active">
+    <div class="card">
+      <input type="text" id="expresion" autocomplete="off" placeholder="Ejemplo: A + A·B">
+      <div class="teclado" id="teclado">
+        <button type="button" data-insert="A">A</button>
+        <button type="button" data-insert="B">B</button>
+        <button type="button" data-insert="C">C</button>
+        <button type="button" data-insert="D">D</button>
+        <button type="button" data-insert="0">0</button>
+        <button type="button" data-insert="E">E</button>
+        <button type="button" data-insert="F">F</button>
+        <button type="button" data-insert="G">G</button>
+        <button type="button" data-insert="H">H</button>
+        <button type="button" data-insert="1">1</button>
+        <button type="button" class="op" data-insert="+">OR +</button>
+        <button type="button" class="op" data-insert="·">AND ·</button>
+        <button type="button" class="op" data-insert="(">(</button>
+        <button type="button" class="op" data-insert=")">)</button>
+        <button type="button" class="op" data-insert="'">NOT '</button>
+        <button type="button" class="op span2" data-insert="''">DOBLE ''</button>
+        <button type="button" class="op span2" data-action="morgan">( )'</button>
+        <button type="button" class="danger" data-action="borrar">⌫</button>
+        <button type="button" class="danger span2" data-action="limpiar">LIMPIAR</button>
+      </div>
+      <button id="btnCalcular" class="btn-primary">Calcular</button>
+    </div>
+
+    <div class="card" id="resumenRapido" style="display:none">
+      <small style="color:var(--tx2);font-weight:600">RESULTADO SIMPLIFICADO:</small>
+      <div id="resultadoMini" style="font-size:1.35rem;font-weight:700;color:var(--ok);margin-top:4px"></div>
+    </div>
+  </section>
+
+  <!-- PESTAÑA 2: ESCÁNER CON IA -->
+  <section id="tab-scan" class="tab-view">
+    <div class="card">
+      <h2 style="margin-top:0;font-size:1.1rem">Escanear problema con IA</h2>
+      <p style="font-size:.9rem;color:var(--tx2);margin-top:0">
+        Toma una foto o sube una imagen de tu cuaderno o libro. La IA extraerá la expresión booleana y la resolverá automáticamente.
+      </p>
+
+      <div class="scan-actions">
+        <label class="btn-sec">
+          📷 Cámara
+          <input type="file" id="inputCamara" accept="image/*" capture="environment" hidden>
+        </label>
+        <label class="btn-sec">
+          🖼️ Galería
+          <input type="file" id="inputGaleria" accept="image/*" hidden>
+        </label>
+      </div>
+
+      <div class="scan-box">
+        <span id="scanPlaceholder" style="color:var(--tx2);font-size:.9rem">Ninguna imagen seleccionada</span>
+        <img id="previewImg" alt="Vista previa">
+      </div>
+
+      <button id="btnEscanearIA" class="btn-primary" disabled>✨ Escanear y Resolver</button>
+      <div id="scanStatus" class="status-msg"></div>
+    </div>
+  </section>
+
+  <!-- PESTAÑA 3: PASOS Y TABLA -->
+  <section id="tab-pasos" class="tab-view">
+    <div class="card">
+      <h3 style="margin-top:0">Resultado:</h3>
+      <p id="resultado">—</p>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Procedimiento:</h3>
+      <button type="button" id="btnLeyes">Mostrar explicación de las leyes</button>
+      <ol id="pasos"></ol>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Tabla de verdad:</h3>
+      <div id="tablaVerdad"></div>
+    </div>
+  </section>
+</main>
+
+<!-- NAVEGACIÓN INFERIOR -->
+<nav class="bottom-nav">
+  <button type="button" class="nav-item active" data-tab="tab-calc">
+    <span class="ico">🧮</span><span>Calculadora</span>
+  </button>
+  <button type="button" class="nav-item" data-tab="tab-scan">
+    <span class="ico">📷</span><span>Escanear IA</span>
+  </button>
+  <button type="button" class="nav-item" data-tab="tab-pasos">
+    <span class="ico">📊</span><span>Pasos y Tabla</span>
+  </button>
+</nav>
+
+<!-- MODAL DE CONFIGURACIÓN -->
+<div class="modal-bg" id="modalConfig">
+  <div class="modal">
+    <h2>⚙️ Configurar Escáner IA</h2>
+    <p style="font-size:.88rem;color:var(--tx2);margin:0">
+      Pega tu clave gratuita de <strong>Google AI Studio (Gemini)</strong>. Se guardará únicamente en este dispositivo.
+    </p>
+    <input type="password" id="inputApiKey" placeholder="AIzaSy...">
+    <div class="modal-actions">
+      <button type="button" class="btn-sec" id="btnCerrarModal">Cancelar</button>
+      <button type="button" class="btn-primary" style="width:auto;padding:10px 18px" id="btnGuardarKey">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== CONFIGURACIÓN FÁCIL =====
+// Puedes pegar tu clave aquí directamente O usar el botón ⚙️ dentro de la app
+const DEFAULT_API_KEY = "";
+const GEMINI_MODEL = "gemini-2.5-flash";
+
+// ===== 1. ÁRBOL DE EXPRESIONES =====
+const variable = nombre => ({ type: "var", nombre });
+const constante = valor => ({ type: "const", valor });
+const negacion = hijo => ({ type: "not", hijo });
+const operacion = (type, izquierda, derecha) => ({ type, izquierda, derecha });
+
+// ===== 2. LEER LA EXPRESIÓN =====
+function tokenizar(texto) {
+    const tokens = [];
+    const regex = /[A-Za-z]|[01]|[()+*.!~'·¬]/y;
+    let pos = 0;
+    while (pos < texto.length) {
+        if (/\s/.test(texto[pos])) { pos++; continue; }
+        regex.lastIndex = pos;
+        const m = regex.exec(texto);
+        if (!m) throw new Error("Símbolo no válido: " + texto[pos]);
+        tokens.push(m[0]);
+        pos = regex.lastIndex;
+    }
+    return tokens;
+}
+
+function analizar(texto) {
+    const tokens = tokenizar(texto);
+    let pos = 0;
+    if (tokens.length === 0) throw new Error("Escribe una expresión booleana.");
+    const ver = () => tokens[pos];
+    const inicioPrimario = t => t !== undefined && /^([A-Za-z01(!~¬])$/.test(t);
+
+    function primario() {
+        const token = ver();
+        if (token === "!" || token === "~" || token === "¬") {
+            pos++;
+            return negacion(primario());
+        }
+        let nodo;
+        if (token === "(") {
+            pos++;
+            nodo = analizarOR();
+            if (ver() !== ")") throw new Error("Falta cerrar un paréntesis.");
+            pos++;
+        } else if (token === "0" || token === "1") {
+            pos++;
+            nodo = constante(Number(token));
+        } else if (token && /^[A-Za-z]$/.test(token)) {
+            pos++;
+            nodo = variable(token.toUpperCase());
+        } else {
+            throw new Error("Expresión incorrecta.");
+        }
+        while (ver() === "'") { pos++; nodo = negacion(nodo); }
+        return nodo;
+    }
+
+    function analizarAND() {
+        let izq = primario();
+        while (["*", ".", "·"].includes(ver()) || inicioPrimario(ver())) {
+            if (["*", ".", "·"].includes(ver())) pos++;
+            izq = operacion("and", izq, primario());
+        }
+        return izq;
+    }
+
+    function analizarOR() {
+        let izq = analizarAND();
+        while (ver() === "+") {
+            pos++;
+            izq = operacion("or", izq, analizarAND());
+        }
+        return izq;
+    }
+
+    const arbol = analizarOR();
+    if (pos !== tokens.length) throw new Error("Hay símbolos sobrantes en la expresión.");
+    return arbol;
+}
+
+// ===== 3. MOSTRAR EXPRESIONES =====
+function formatoHTML(nodo, pp = 0) {
+    const pr = { or: 1, and: 2, not: 3, var: 4, const: 4 }[nodo.type];
+    let t;
+    if (nodo.type === "var") t = nodo.nombre;
+    else if (nodo.type === "const") t = String(nodo.valor);
+    else if (nodo.type === "not") t = '<span class="neg">' + formatoHTML(nodo.hijo, 0) + "</span>";
+    else if (nodo.type === "and") {
+        const sep = (nodo.izquierda.type === "const" || nodo.derecha.type === "const") ? " · " : "";
+        t = formatoHTML(nodo.izquierda, pr) + sep + formatoHTML(nodo.derecha, pr);
+    } else t = formatoHTML(nodo.izquierda, pr) + " + " + formatoHTML(nodo.derecha, pr);
+    return pr < pp ? "(" + t + ")" : t;
+}
+
+const EXPLICA = {
+    "Doble negación": "(A')' = A",
+    "Complemento de constantes": "0' = 1 y 1' = 0",
+    "Distributiva (factor común)": "A·B + A·C = A·(B + C)"
+};
+
+// ===== 4. COMPARAR Y REAGRUPAR =====
+function aplanar(nodo, tipo) {
+    if (nodo.type !== tipo) return [nodo];
+    return [...aplanar(nodo.izquierda, tipo), ...aplanar(nodo.derecha, tipo)];
+}
+
+function clave(nodo) {
+    if (nodo.type === "var") return "V:" + nodo.nombre;
+    if (nodo.type === "const") return "C:" + nodo.valor;
+    if (nodo.type === "not") return "N(" + clave(nodo.hijo) + ")";
+    return nodo.type + "(" + aplanar(nodo, nodo.type).map(clave).sort().join(",") + ")";
+}
+
+const iguales = (a, b) => clave(a) === clave(b);
+
+function sonComplementos(a, b) {
+    return (a.type === "not" && iguales(a.hijo, b)) ||
+           (b.type === "not" && iguales(b.hijo, a));
+}
+
+function construir(tipo, elementos) {
+    if (elementos.length === 0) return constante(tipo === "and" ? 1 : 0);
+    return elementos.slice(1).reduce((acc, el) => operacion(tipo, acc, el), elementos[0]);
+}
+
+// ===== 5. LEYES BOOLEANAS =====
+function aplicarLey(nodo) {
+    if (nodo.type === "not") {
+        const h = nodo.hijo;
+        if (h.type === "not") return { nodo: h.hijo, ley: "Doble negación" };
+        if (h.type === "const") return { nodo: constante(1 - h.valor), ley: "Complemento de constantes" };
+        if (h.type === "and")
+            return { nodo: operacion("or", negacion(h.izquierda), negacion(h.derecha)), ley: "De Morgan: (A·B)' = A' + B'" };
+        if (h.type === "or")
+            return { nodo: operacion("and", negacion(h.izquierda), negacion(h.derecha)), ley: "De Morgan: (A+B)' = A'·B'" };
+    }
+
+    if (nodo.type === "and" || nodo.type === "or") {
+        const tipo = nodo.type;
+        const neutro = tipo === "and" ? 1 : 0;
+        let el = aplanar(nodo, tipo);
+
+        if (el.some(x => x.type === "const" && x.valor === 1 - neutro))
+            return { nodo: constante(1 - neutro), ley: tipo === "and" ? "Dominación: A·0 = 0" : "Dominación: A+1 = 1" };
+
+        const sinNeutro = el.filter(x => !(x.type === "const" && x.valor === neutro));
+        if (sinNeutro.length !== el.length)
+            return { nodo: construir(tipo, sinNeutro), ley: tipo === "and" ? "Identidad: A·1 = A" : "Identidad: A+0 = A" };
+
+        const unicos = [];
+        for (const x of el) if (!unicos.some(u => iguales(u, x))) unicos.push(x);
+        if (unicos.length !== el.length)
+            return { nodo: construir(tipo, unicos), ley: tipo === "and" ? "Idempotencia: A·A = A" : "Idempotencia: A+A = A" };
+
+        for (let i = 0; i < el.length; i++)
+            for (let j = i + 1; j < el.length; j++)
+                if (sonComplementos(el[i], el[j]))
+                    return { nodo: constante(1 - neutro), ley: tipo === "and" ? "Complemento: A·A' = 0" : "Complemento: A+A' = 1" };
+
+        const interno = tipo === "or" ? "and" : "or";
+
+        for (let i = 0; i < el.length; i++)
+            for (let j = 0; j < el.length; j++) {
+                if (i === j || el[i].type !== interno) continue;
+                if (aplanar(el[i], interno).some(x => iguales(x, el[j])))
+                    return { nodo: construir(tipo, el.filter((_, k) => k !== i)), ley: tipo === "or" ? "Absorción: A + A·B = A" : "Absorción: A·(A+B) = A" };
+            }
+
+        for (let i = 0; i < el.length; i++)
+            for (let j = 0; j < el.length; j++) {
+                if (i === j || el[j].type !== interno) continue;
+                const factores = aplanar(el[j], interno);
+                const f = factores.find(x => sonComplementos(x, el[i]));
+                if (f) {
+                    const nuevo = construir(interno, factores.filter(x => x !== f));
+                    return { nodo: construir(tipo, el.map((x, k) => k === j ? nuevo : x)),
+                             ley: tipo === "or" ? "Absorción: A + A'·B = A + B" : "Absorción: A·(A'+B) = A·B" };
+                }
+            }
+
+        const tipoFactor = interno;
+        const candidatos = [];
+        for (const x of el)
+            if (x.type === tipoFactor)
+                for (const f of aplanar(x, tipoFactor))
+                    if (!candidatos.some(c => iguales(c, f))) candidatos.push(f);
+
+        for (const cand of candidatos) {
+            const coinc = el.filter(x => x.type === tipoFactor &&
+                aplanar(x, tipoFactor).some(f => iguales(f, cand)));
+            if (coinc.length >= 2) {
+                const restos = coinc.map(x => construir(tipoFactor,
+                    aplanar(x, tipoFactor).filter(f => !iguales(f, cand))));
+                const factorizado = operacion(tipoFactor, cand, construir(tipo, restos));
+                const nuevos = el.filter(x => !coinc.includes(x));
+                nuevos.push(factorizado);
+                return { nodo: construir(tipo, nuevos), ley: "Distributiva (factor común)" };
+            }
+        }
+    }
+    return null;
+}
+
+// ===== 6. SIMPLIFICAR PASO A PASO =====
+function paso(nodo) {
+    if (nodo.type === "not") {
+        const r = paso(nodo.hijo);
+        if (r) return { nodo: negacion(r.nodo), ley: r.ley };
+    } else if (nodo.type === "and" || nodo.type === "or") {
+        let r = paso(nodo.izquierda);
+        if (r) return { nodo: operacion(nodo.type, r.nodo, nodo.derecha), ley: r.ley };
+        r = paso(nodo.derecha);
+        if (r) return { nodo: operacion(nodo.type, nodo.izquierda, r.nodo), ley: r.ley };
+    }
+    const c = aplicarLey(nodo);
+    return c && !iguales(nodo, c.nodo) ? c : null;
+}
+
+function simplificar(nodo, pasos) {
+    let actual = nodo;
+    for (let i = 0; i < 300; i++) {
+        const r = paso(actual);
+        if (!r) break;
+        pasos.push({ n: r.nodo, ley: r.ley });
+        actual = r.nodo;
+    }
+    return actual;
+}
+
+// ===== 7. TABLA DE VERDAD =====
+function obtenerVariables(nodo, lista = new Set()) {
+    if (nodo.type === "var") lista.add(nodo.nombre);
+    else if (nodo.type === "not") obtenerVariables(nodo.hijo, lista);
+    else if (nodo.type === "and" || nodo.type === "or") {
+        obtenerVariables(nodo.izquierda, lista);
+        obtenerVariables(nodo.derecha, lista);
+    }
+    return [...lista].sort();
+}
+
+function evaluar(nodo, v) {
+    if (nodo.type === "var") return v[nodo.nombre];
+    if (nodo.type === "const") return nodo.valor;
+    if (nodo.type === "not") return 1 - evaluar(nodo.hijo, v);
+    const a = evaluar(nodo.izquierda, v), b = evaluar(nodo.derecha, v);
+    return nodo.type === "and" ? a * b : Math.max(a, b);
+}
+
+function generarTabla(original, simplificada, contenedor) {
+    contenedor.replaceChildren();
+    const vars = obtenerVariables(original);
+    if (vars.length > 8) {
+        contenedor.textContent = "La tabla se omitió porque hay más de 8 variables.";
+        return;
+    }
+    const tabla = document.createElement("table");
+    tabla.className = "tabla-verdad";
+    const fila0 = document.createElement("tr");
+    [...vars, "Orig", "Simp"].forEach(n => {
+        const th = document.createElement("th");
+        th.textContent = n;
+        fila0.appendChild(th);
+    });
+    const thead = document.createElement("thead");
+    thead.appendChild(fila0);
+    tabla.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    let equivalentes = true;
+    for (let i = 0; i < 2 ** vars.length; i++) {
+        const valores = {};
+        vars.forEach((n, j) => { valores[n] = (i >> (vars.length - j - 1)) & 1; });
+        const r1 = evaluar(original, valores), r2 = evaluar(simplificada, valores);
+        if (r1 !== r2) equivalentes = false;
+        const tr = document.createElement("tr");
+        [...vars.map(n => valores[n]), r1, r2].forEach(x => {
+            const td = document.createElement("td");
+            td.textContent = String(x);
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    }
+    tabla.appendChild(tbody);
+    contenedor.appendChild(tabla);
+
+    const aviso = document.createElement("p");
+    aviso.className = equivalentes ? "ok" : "mal";
+    aviso.textContent = equivalentes
+        ? "✓ La expresión original y la simplificada son equivalentes."
+        : "✗ Las columnas no coinciden: revisa la simplificación.";
+    contenedor.appendChild(aviso);
+}
+
+// ===== 8. NAVEGACIÓN, CALCULADORA Y ESCÁNER IA =====
+const navItems = document.querySelectorAll(".nav-item");
+const tabViews = document.querySelectorAll(".tab-view");
+
+function cambiarPestana(id) {
+    navItems.forEach(b => b.classList.toggle("active", b.dataset.tab === id));
+    tabViews.forEach(v => v.classList.toggle("active", v.id === id));
+}
+navItems.forEach(b => b.addEventListener("click", () => cambiarPestana(b.dataset.tab)));
+
+const entrada = document.getElementById("expresion");
+const boton = document.getElementById("btnCalcular");
+const listaPasos = document.getElementById("pasos");
+const resultado = document.getElementById("resultado");
+const resultadoMini = document.getElementById("resultadoMini");
+const resumenRapido = document.getElementById("resumenRapido");
+const tablaVerdad = document.getElementById("tablaVerdad");
+const teclado = document.getElementById("teclado");
+
+teclado.addEventListener("mousedown", e => e.preventDefault());
+teclado.addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.insert !== undefined) {
+        entrada.setRangeText(b.dataset.insert, entrada.selectionStart, entrada.selectionEnd, "end");
+        entrada.focus();
+    } else if (b.dataset.action === "morgan") {
+        const ini = entrada.selectionStart, fin = entrada.selectionEnd;
+        const sel = entrada.value.slice(ini, fin);
+        entrada.setRangeText(`(${sel})'`, ini, fin, "end");
+        if (sel.length === 0) entrada.setSelectionRange(ini + 1, ini + 1);
+        entrada.focus();
+    } else if (b.dataset.action === "borrar") {
+        const ini = entrada.selectionStart, fin = entrada.selectionEnd;
+        if (ini === fin && ini > 0) entrada.setRangeText("", ini - 1, fin, "end");
+        else entrada.setRangeText("", ini, fin, "end");
+        entrada.focus();
+    } else if (b.dataset.action === "limpiar") {
+        entrada.value = "";
+        listaPasos.replaceChildren();
+        resultado.textContent = "—";
+        resumenRapido.style.display = "none";
+        tablaVerdad.replaceChildren();
+        entrada.focus();
+    }
+});
+
+function calcular() {
+    listaPasos.replaceChildren();
+    tablaVerdad.replaceChildren();
+    resultado.textContent = "";
+    try {
+        const original = analizar(entrada.value.trim());
+        const pasos = [];
+        const final = simplificar(original, pasos);
+
+        const li0 = document.createElement("li");
+        li0.innerHTML = '<span class="mat">' + formatoHTML(original) + "</span>";
+        listaPasos.appendChild(li0);
+
+        if (pasos.length === 0) {
+            const li = document.createElement("li");
+            li.textContent = "No se encontraron reducciones con las leyes programadas.";
+            listaPasos.appendChild(li);
+        } else {
+            pasos.forEach(p => {
+                const [nombre, ...resto] = p.ley.split(":");
+                const exp = resto.join(":").trim() || EXPLICA[nombre] || "";
+                const li = document.createElement("li");
+                li.innerHTML = '<span class="mat">= ' + formatoHTML(p.n) + "</span>" +
+                    '<span class="ley">' + nombre + "</span>" +
+                    (exp ? '<span class="exp">' + exp + "</span>" : "");
+                listaPasos.appendChild(li);
+            });
+        }
+        const htmlFinal = '<span class="mat">' + formatoHTML(final) + "</span>";
+        resultado.innerHTML = htmlFinal;
+        resultadoMini.innerHTML = htmlFinal;
+        resumenRapido.style.display = "block";
+        generarTabla(original, final, tablaVerdad);
+    } catch (err) {
+        resultado.textContent = "Error: " + err.message;
+        resultadoMini.textContent = "Error: " + err.message;
+        resumenRapido.style.display = "block";
+    }
+}
+
+document.getElementById("btnLeyes").addEventListener("click", function() {
+    const ver = listaPasos.classList.toggle("ver-exp");
+    this.textContent = ver ? "Ocultar explicación de las leyes" : "Mostrar explicación de las leyes";
+});
+listaPasos.addEventListener("click", e => {
+    const ley = e.target.closest(".ley");
+    if (ley) ley.parentElement.classList.toggle("abierta");
+});
+
+boton.addEventListener("click", calcular);
+entrada.addEventListener("keydown", e => { if (e.key === "Enter") calcular(); });
+
+// ===== MODAL DE CONFIGURACIÓN API KEY =====
+const modalConfig = document.getElementById("modalConfig");
+const inputApiKey = document.getElementById("inputApiKey");
+const getApiKey = () => localStorage.getItem("gemini_api_key") || DEFAULT_API_KEY;
+
+document.getElementById("btnConfig").addEventListener("click", () => {
+    inputApiKey.value = getApiKey();
+    modalConfig.classList.add("open");
+});
+document.getElementById("btnCerrarModal").addEventListener("click", () => modalConfig.classList.remove("open"));
+document.getElementById("btnGuardarKey").addEventListener("click", () => {
+    localStorage.setItem("gemini_api_key", inputApiKey.value.trim());
+    modalConfig.classList.remove("open");
+});
+
+// ===== ESCÁNER CON IA (GEMINI) =====
+let imagenBase64 = null;
+let imagenMime = "image/jpeg";
+const previewImg = document.getElementById("previewImg");
+const scanPlaceholder = document.getElementById("scanPlaceholder");
+const btnEscanearIA = document.getElementById("btnEscanearIA");
+const scanStatus = document.getElementById("scanStatus");
+
+function cargarImagen(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    imagenMime = file.type || "image/jpeg";
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const dataUrl = ev.target.result;
+        previewImg.src = dataUrl;
+        previewImg.style.display = "block";
+        scanPlaceholder.style.display = "none";
+        imagenBase64 = dataUrl.split(",")[1];
+        btnEscanearIA.disabled = false;
+        scanStatus.textContent = "";
+    };
+    reader.readAsDataURL(file);
+}
+
+document.getElementById("inputCamara").addEventListener("change", cargarImagen);
+document.getElementById("inputGaleria").addEventListener("change", cargarImagen);
+
+btnEscanearIA.addEventListener("click", async () => {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+        scanStatus.textContent = "⚠️ Primero configura tu clave de API en el botón ⚙️ arriba.";
+        modalConfig.classList.add("open");
+        return;
+    }
+    btnEscanearIA.disabled = true;
+    scanStatus.textContent = "Analizando imagen con IA...";
+    try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+        const body = {
+            contents: [{
+                parts: [
+                    { text: "Extrae ÚNICAMENTE la expresión de álgebra booleana de esta imagen. Usa letras mayúsculas (A-H), '+' para OR, '·' para AND, y apóstrofe (') para negación (ej. A' o (A+B)'). Responde SOLO con la expresión limpia, sin texto adicional ni comillas." },
+                    { inline_data: { mime_type: imagenMime, data: imagenBase64 } }
+                ]
+            }]
+        };
+        const resp = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error?.message || "Error al conectar con Gemini");
+        const expr = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (!expr) throw new Error("No se detectó ninguna expresión.");
+
+        entrada.value = expr;
+        calcular();
+        scanStatus.textContent = "✓ Detectado: " + expr;
+        cambiarPestana("tab-calc");
+    } catch (err) {
+        scanStatus.textContent = "Error: " + err.message;
+    } finally {
+        btnEscanearIA.disabled = false;
+    }
+});
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js").catch(err => {
+        console.error("No se pudo registrar el modo sin conexión:", err);
+      });
+    });
+  }
+</script>
+</body>
+</html>
